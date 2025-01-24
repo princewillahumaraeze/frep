@@ -8,8 +8,17 @@ pub struct Config{
 }
 
 impl Config{
+    /// Builds a new Config instance from the command-line arguments.
+    ///
+    /// # Arguments
+    ///
+    /// * `args` - An iterator over the command-line arguments.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the arguments cannot be parsed.
     pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str>{
-        args.next();
+        args.next();// skip the first argument which is the name of the program
 
         let query = match args.next(){
             Some(arg) => arg,
@@ -27,6 +36,16 @@ impl Config{
         Ok(Config{query, file_path, ignore_case})
     }
 }
+
+/// Runs the main functionality of the frep program.
+///
+/// # Arguments
+///
+/// * `config` - The configuration for the program.
+///
+/// # Errors
+///
+/// Returns an error if the program cannot complete successfully.
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(config.file_path)?;
