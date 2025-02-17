@@ -1,3 +1,4 @@
+use std::fmt;
 use std::error::Error;
 use std::{env, fs};
 
@@ -5,6 +6,12 @@ pub struct Config{
     pub query: String,
     pub file_path: String,
     pub ignore_case: bool,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Output{
+    pub line_number: usize,
+    pub line: String,
 }
 
 impl Config{
@@ -37,6 +44,17 @@ impl Config{
     }
 }
 
+impl Output{
+    pub fn new(line_number: usize, line: String) -> Self{
+        Output{line_number, line}
+    }
+}
+impl fmt::Display for Output{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
+        write!(f, "{}: {}", self.line_number, self.line)
+    }
+}
+
 /// Runs the main functionality of the frep program.
 ///
 /// # Arguments
@@ -63,19 +81,27 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str>{
-    contents.lines()
-        .filter(|line| line.contains(query))
-        .collect()
+pub fn search(query: &str, contents: &str) -> Vec<Output>{
+    let results:Vec<_> = contents.lines()
+                .enumerate()
+                .filter(|(_ ,line)| line.contains(query))
+                .collect();
+
+    let mut output: Vec<Output> =  Vec::new();
+
+    for (i, line) in results{
+        output.push(Output::new(i, String::from(line)));
+    }
+    output
 }
 
-pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str>{
+pub fn search_case_insensitive(query: &str, contents: &str) -> Vec<Output>{
     let query = query.to_lowercase();
     let mut results = Vec::new();
 
-    for line in contents.lines(){
+    for (i, line) in contents.lines().enumerate(){
         if line.to_lowercase().contains(&query){
-            results.push(line);
+            results.push(Output::new(i-1, String::from(line)));
         }
     }
     results
@@ -83,6 +109,7 @@ pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a st
 
 #[cfg(test)]
 mod tests{
+    use std::vec;
     use super::*;
 
     #[test]
@@ -94,8 +121,10 @@ safe, fast, productive.
 Pick three.
 Duct Tape.";
 
-        assert_eq!(vec!["safe, fast, productive."], search(query, contents));
-    }
+        assert_eq!(
+            vec![Output::new(2, String::from("safe, fast, productive."))],
+            search(query, contents));
+        }
 
     #[test]
     fn case_insensitive(){
@@ -107,7 +136,12 @@ safe, fast, productive.
 Pick three.
 Trust me.";
 
-        assert_eq!(vec!["Rust:", "Trust me."], search_case_insensitive(query, contents));
+        assert_eq!(
+            vec![
+                Output::new(1, String::from("Rust:")),
+                Output::new(4, String::from("Trust me."))
+            ],
+            search_case_insensitive(query, contents));
     }
 
 }
