@@ -1,11 +1,11 @@
 use std::fmt;
 use std::error::Error;
-use std::{env, fs};
+use std::fs;
 
 pub struct Config{
+    pub ignore_case: bool,
     pub query: String,
     pub file_path: String,
-    pub ignore_case: bool,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -27,6 +27,11 @@ impl Config{
     pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str>{
         args.next();// skip the first argument which is the name of the program
 
+        let ignore_case = match args.next() {
+            Some(arg) => arg == "--ignore-case",
+            None => false,
+        };
+
         let query = match args.next(){
             Some(arg) => arg,
             None => return Err("Didn't get a query string"),
@@ -38,9 +43,9 @@ impl Config{
             None => return Err("Didn't get a file path"),
         };
 
-        let ignore_case = env::var("IGNORE CASE").is_ok();
 
-        Ok(Config{query, file_path, ignore_case})
+
+        Ok(Config{ignore_case, query, file_path})
     }
 }
 
@@ -66,25 +71,30 @@ impl fmt::Display for Output{
 /// Returns an error if the program cannot complete successfully.
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let contents = fs::read_to_string(config.file_path)?;
 
-    let results = if config.ignore_case{
-        search_case_insensitive(&config.query, &contents)
-    }   else {
-        search(&config.query, &contents)
-    };
+    let results = search(
+                                    &config.query,
+                                    &fs::read_to_string(config.file_path)?,
+                                    Some(config.ignore_case));
 
     for line in results{
-        println!("Result = \"{line}\"")
+        println!("Line {} = {}", line.line_number, line.line);
     }
 
     Ok(())
 }
 
-pub fn search(query: &str, contents: &str) -> Vec<Output>{
+pub fn search(query: &str, contents: &str, config: Option<bool>) -> Vec<Output>{
+
+    let config = config.unwrap_or(false);
+    let mut pattern = String::from(query);
+    if config{
+        pattern = query.to_lowercase();
+    }
+
     let results:Vec<_> = contents.lines()
                 .enumerate()
-                .filter(|(_ ,line)| line.contains(query))
+                .filter(|(_ ,line)| line.to_lowercase().contains(&pattern))
                 .collect();
 
     let mut output: Vec<Output> =  Vec::new();
@@ -95,18 +105,6 @@ pub fn search(query: &str, contents: &str) -> Vec<Output>{
     output
 }
 
-pub fn search_case_insensitive(query: &str, contents: &str) -> Vec<Output>{
-    let query = query.to_lowercase();
-    let mut results = Vec::new();
-
-    for (i, line) in contents.lines().enumerate(){
-        if line.to_lowercase().contains(&query){
-            results.push(Output::new(i-1, String::from(line)));
-        }
-    }
-    results
-}
-
 #[cfg(test)]
 mod tests{
     use std::vec;
@@ -114,7 +112,7 @@ mod tests{
 
     #[test]
     fn one_result(){
-        let query = "duct";
+        let query = "rod";
         let contents = "
 Rust:
 safe, fast, productive.
@@ -123,14 +121,13 @@ Duct Tape.";
 
         assert_eq!(
             vec![Output::new(2, String::from("safe, fast, productive."))],
-            search(query, contents));
+            search(query, contents, Some(false)));
         }
 
     #[test]
     fn case_insensitive(){
-        let query = "rUsT";
+        let query = "rUSt";
         let contents = "
-
 Rust:
 safe, fast, productive.
 Pick three.
@@ -141,7 +138,7 @@ Trust me.";
                 Output::new(1, String::from("Rust:")),
                 Output::new(4, String::from("Trust me."))
             ],
-            search_case_insensitive(query, contents));
+            search(query, contents, Some(true)));
     }
 
 }

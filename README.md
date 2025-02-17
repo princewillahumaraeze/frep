@@ -33,14 +33,11 @@ frep <search_pattern> <file_path>
 frep 'hello' example.txt
 ```
 
-* #### Enviroment Variables
-    * IGNORE_CASE: Set this enviroment variable to enable case-insensitive search
+* #### Environment Variables
+    * --ignore-case : Set this enviroment variable to enable case-insensitive search
     ```bash
     # On Unix-like systems
-    IGNORE_CASE=1 frep <search_pattern> <file_path>
-
-    # On Windows PowerShell
-    $env:IGNORE_CASE=1; frep <search_pattern> <  file_path>
+    frep --ignore-case <search_pattern> <file_path>
     ```
 
 ## Project Structure
