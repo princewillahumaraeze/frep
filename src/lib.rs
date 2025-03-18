@@ -73,9 +73,9 @@ impl fmt::Display for Output{
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
     let results = search(
-                                    &config.query,
-                                    &fs::read_to_string(config.file_path)?,
-                                    Some(config.ignore_case));
+        &config.query,
+        &fs::read_to_string(config.file_path)?,
+        Some(config.ignore_case));
 
     for line in results{
         println!("Line {} = {}", line.line_number, line.line);
